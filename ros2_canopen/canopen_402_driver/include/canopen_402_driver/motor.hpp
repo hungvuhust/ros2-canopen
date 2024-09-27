@@ -18,6 +18,7 @@
 #ifndef MOTOR_HPP
 #define MOTOR_HPP
 
+#include "rclcpp/rclcpp.hpp"
 #include <algorithm>
 #include <atomic>
 #include <bitset>
@@ -27,7 +28,6 @@
 #include <limits>
 #include <mutex>
 #include <thread>
-#include "rclcpp/rclcpp.hpp"
 
 #include "canopen_402_driver/default_homing_mode.hpp"
 #include "canopen_402_driver/mode_forward_helper.hpp"
@@ -35,48 +35,50 @@
 #include "canopen_base_driver/diagnostic_collector.hpp"
 #include "canopen_base_driver/lely_driver_bridge.hpp"
 
-namespace ros2_canopen
-{
+namespace ros2_canopen {
 
-typedef ModeForwardHelper<MotorBase::Profiled_Velocity, int32_t, 0x60FF, 0, 0> ProfiledVelocityMode;
-typedef ModeForwardHelper<MotorBase::Profiled_Torque, int16_t, 0x6071, 0, 0> ProfiledTorqueMode;
-typedef ModeForwardHelper<MotorBase::Cyclic_Synchronous_Position, int32_t, 0x607A, 0, 0>
-  CyclicSynchronousPositionMode;
-typedef ModeForwardHelper<MotorBase::Cyclic_Synchronous_Velocity, int32_t, 0x60FF, 0, 0>
-  CyclicSynchronousVelocityMode;
-typedef ModeForwardHelper<MotorBase::Cyclic_Synchronous_Torque, int16_t, 0x6071, 0, 0>
-  CyclicSynchronousTorqueMode;
-typedef ModeForwardHelper<
-  MotorBase::Velocity, int16_t, 0x6042, 0,
-  (1 << Command402::CW_Operation_mode_specific0) | (1 << Command402::CW_Operation_mode_specific1) |
-    (1 << Command402::CW_Operation_mode_specific2)>
-  VelocityMode;
-typedef ModeForwardHelper<
-  MotorBase::Interpolated_Position, int32_t, 0x60C1, 0x01,
-  (1 << Command402::CW_Operation_mode_specific0)>
-  InterpolatedPositionMode;
+typedef ModeForwardHelper<MotorBase::Profiled_Velocity, int32_t, 0x60FF, 0, 0>
+    ProfiledVelocityMode;
+typedef ModeForwardHelper<MotorBase::Profiled_Torque, int16_t, 0x6071, 0, 0>
+    ProfiledTorqueMode;
+typedef ModeForwardHelper<MotorBase::Cyclic_Synchronous_Position, int32_t,
+                          0x607A, 0, 0>
+    CyclicSynchronousPositionMode;
+typedef ModeForwardHelper<MotorBase::Cyclic_Synchronous_Velocity, int32_t,
+                          0x60FF, 0, 0>
+    CyclicSynchronousVelocityMode;
+typedef ModeForwardHelper<MotorBase::Cyclic_Synchronous_Torque, int16_t, 0x6071,
+                          0, 0>
+    CyclicSynchronousTorqueMode;
+typedef ModeForwardHelper<MotorBase::Velocity, int16_t, 0x6042, 0,
+                          (1 << Command402::CW_Operation_mode_specific0) |
+                              (1 << Command402::CW_Operation_mode_specific1) |
+                              (1 << Command402::CW_Operation_mode_specific2)>
+    VelocityMode;
+typedef ModeForwardHelper<MotorBase::Interpolated_Position, int32_t, 0x60C1,
+                          0x01, (1 << Command402::CW_Operation_mode_specific0)>
+    InterpolatedPositionMode;
 
-class Motor402 : public MotorBase
-{
+class Motor402 : public MotorBase {
 public:
-  Motor402(
-    std::shared_ptr<LelyDriverBridge> driver, ros2_canopen::State402::InternalState switching_state)
-  : MotorBase(), switching_state_(switching_state), monitor_mode_(true), state_switch_timeout_(5)
-  {
+  Motor402(std::shared_ptr<LelyDriverBridge>     driver,
+           ros2_canopen::State402::InternalState switching_state)
+      : MotorBase(), switching_state_(switching_state), monitor_mode_(true),
+        state_switch_timeout_(5) {
     this->driver = driver;
   }
 
-  virtual bool setTarget(double val);
-  virtual bool enterModeAndWait(uint16_t mode);
-  virtual bool isModeSupported(uint16_t mode);
+  virtual bool     setTarget(double val);
+  virtual bool     enterModeAndWait(uint16_t mode);
+  virtual bool     isModeSupported(uint16_t mode);
   virtual uint16_t getMode();
-  bool readState();
+  bool             readState();
 
   /**
    * @brief Updates the device diagnostic information
    *
-   * This function updates the diagnostic information of the device by updating the diagnostic
-   * status message
+   * This function updates the diagnostic information of the device by updating
+   * the diagnostic status message
    * @ref diagnostic_status_ and publishing it.
    */
   void handleDiag();
@@ -145,90 +147,92 @@ public:
    * @return false
    */
   template <typename T, typename... Args>
-  bool registerMode(uint16_t mode, Args &&... args)
-  {
+  bool registerMode(uint16_t mode, Args &&...args) {
     return mode_allocators_
-      .insert(std::make_pair(
-        mode,
-        [args..., mode, this]()
-        {
-        registerMode(mode, ModeSharedPtr(new T(args...)));
-        }))
-      .second;
+        .insert(std::make_pair(mode,
+                               [args..., mode, this]() {
+                                 registerMode(mode,
+                                              ModeSharedPtr(new T(args...)));
+                               }))
+        .second;
   }
 
   /**
    * @brief Tries to register the standard operation modes defined in cia402
    *
    */
-  virtual void registerDefaultModes()
-  {
+  virtual void registerDefaultModes() {
     registerMode<ProfiledPositionMode>(MotorBase::Profiled_Position, driver);
     registerMode<VelocityMode>(MotorBase::Velocity, driver);
     registerMode<ProfiledVelocityMode>(MotorBase::Profiled_Velocity, driver);
     registerMode<ProfiledTorqueMode>(MotorBase::Profiled_Torque, driver);
     registerMode<DefaultHomingMode>(MotorBase::Homing, driver);
-    registerMode<InterpolatedPositionMode>(MotorBase::Interpolated_Position, driver);
-    registerMode<CyclicSynchronousPositionMode>(MotorBase::Cyclic_Synchronous_Position, driver);
-    registerMode<CyclicSynchronousVelocityMode>(MotorBase::Cyclic_Synchronous_Velocity, driver);
-    registerMode<CyclicSynchronousTorqueMode>(MotorBase::Cyclic_Synchronous_Torque, driver);
+    registerMode<InterpolatedPositionMode>(MotorBase::Interpolated_Position,
+                                           driver);
+    registerMode<CyclicSynchronousPositionMode>(
+        MotorBase::Cyclic_Synchronous_Position, driver);
+    registerMode<CyclicSynchronousVelocityMode>(
+        MotorBase::Cyclic_Synchronous_Velocity, driver);
+    registerMode<CyclicSynchronousTorqueMode>(
+        MotorBase::Cyclic_Synchronous_Torque, driver);
   }
 
-  double get_speed() const { return (double)this->driver->universal_get_value<int32_t>(0x606C, 0); }
-  double get_position() const
-  {
+  double get_speed() const {
+    return (double)this->driver->universal_get_value<int32_t>(0x606C, 0);
+  }
+  double get_position() const {
     return (double)this->driver->universal_get_value<int32_t>(0x6064, 0);
   }
 
-  void set_diagnostic_status_msgs(std::shared_ptr<DiagnosticsCollector> status, bool enable)
-  {
+  void set_diagnostic_status_msgs(std::shared_ptr<DiagnosticsCollector> status,
+                                  bool enable) {
     this->enable_diagnostics_.store(enable);
     this->diag_collector_ = status;
   }
 
 private:
   virtual bool isModeSupportedByDevice(uint16_t mode);
-  void registerMode(uint16_t id, const ModeSharedPtr & m);
+  void         registerMode(uint16_t id, const ModeSharedPtr &m);
 
   ModeSharedPtr allocMode(uint16_t mode);
 
   bool switchMode(uint16_t mode);
-  bool switchState(const State402::InternalState & target);
+  bool switchState(const State402::InternalState &target);
 
-  std::atomic<uint16_t> status_word_;
-  uint16_t control_word_;
-  std::mutex cw_mutex_;
-  std::atomic<bool> start_fault_reset_;
+  std::atomic<uint16_t>                status_word_;
+  uint16_t                             control_word_;
+  std::mutex                           cw_mutex_;
+  std::atomic<bool>                    start_fault_reset_;
   std::atomic<State402::InternalState> target_state_;
 
   State402 state_handler_;
 
-  std::mutex map_mutex_;
+  std::mutex                                  map_mutex_;
   std::unordered_map<uint16_t, ModeSharedPtr> modes_;
-  typedef std::function<void()> AllocFuncType;
+  typedef std::function<void()>               AllocFuncType;
   std::unordered_map<uint16_t, AllocFuncType> mode_allocators_;
 
-  ModeSharedPtr selected_mode_;
-  uint16_t mode_id_;
-  std::condition_variable mode_cond_;
-  std::mutex mode_mutex_;
+  ModeSharedPtr                 selected_mode_;
+  uint16_t                      mode_id_;
+  std::condition_variable       mode_cond_;
+  std::mutex                    mode_mutex_;
   const State402::InternalState switching_state_;
-  const bool monitor_mode_;
-  const std::chrono::seconds state_switch_timeout_;
+  const bool                    monitor_mode_;
+  const std::chrono::seconds    state_switch_timeout_;
 
   std::shared_ptr<LelyDriverBridge> driver;
-  const uint16_t status_word_entry_index = 0x6041; //status word
-  const uint16_t control_word_entry_index = 0x6040; // Control word
+  const uint16_t status_word_entry_index     = 0x6041; // status word
+  const uint16_t control_word_entry_index    = 0x6040; // Control word
   // const uint16_t control_word_entry_index = 0x2020;
-  const uint16_t op_mode_display_index = 0x6061; //  status Mode_
-  const uint16_t op_mode_index = 0x6060; //  mode id
+  const uint16_t op_mode_display_index       = 0x6061; //  status Mode_
+  const uint16_t op_mode_index               = 0x6060; //  mode id
   const uint16_t supported_drive_modes_index = 0x6502;
 
   // Diagnostic components
-  std::atomic<bool> enable_diagnostics_;
+  std::atomic<bool>                     enable_diagnostics_;
   std::shared_ptr<DiagnosticsCollector> diag_collector_;
 };
 
-}  // namespace ros2_canopen
+} // namespace ros2_canopen
 
 #endif

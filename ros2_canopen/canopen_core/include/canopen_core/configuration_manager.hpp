@@ -16,34 +16,35 @@
 #ifndef CONFIGURATION_MANAGER_HPP
 #define CONFIGURATION_MANAGER_HPP
 
+#include "yaml-cpp/yaml.h"
 #include <iostream>
 #include <map>
 #include <optional>
 #include <rclcpp/rclcpp.hpp>
 #include <string>
 #include <vector>
-#include "yaml-cpp/yaml.h"
 
-namespace ros2_canopen
-{
+namespace ros2_canopen {
 /**
  * @brief Manager for Bus Configuration.
  *
  * The Bus configuration Manager stores the YAML bus configuration and
  * enables reading configuration entries. The configuration manager is passed
- * to all ros2_canopen master and slave drivers to enable reading driver specific
- * configuration parameters from the YAML configuration file.
+ * to all ros2_canopen master and slave drivers to enable reading driver
+ * specific configuration parameters from the YAML configuration file.
  *
  */
-class ConfigurationManager
-{
+class ConfigurationManager {
 private:
-  std::string file_;                           ///< Stores the configuration file name
-  YAML::Node root_;                            ///< Stores YAML root node
-  std::map<std::string, YAML::Node> devices_;  ///< Stores all configuration per device
+  std::string file_; ///< Stores the configuration file name
+  YAML::Node  root_; ///< Stores YAML root node
+  std::map<std::string, YAML::Node>
+      devices_; ///< Stores all configuration per device
 
 public:
-  ConfigurationManager(std::string & file) : file_(file) { root_ = YAML::LoadFile(file_.c_str()); }
+  ConfigurationManager(std::string &file) : file_(file) {
+    root_ = YAML::LoadFile(file_.c_str());
+  }
 
   /**
    * @brief Gets a configuration entry for a specific device
@@ -54,18 +55,14 @@ public:
    * @return std::optional<T> Return value, can be empty.
    */
   template <typename T>
-  std::optional<T> get_entry(std::string device_name, std::string entry_name)
-  {
-    try
-    {
+  std::optional<T> get_entry(std::string device_name, std::string entry_name) {
+    try {
       auto config = devices_.at(device_name);
       return std::optional<T>(config[entry_name.c_str()].as<T>());
-    }
-    catch (const std::exception & e)
-    {
-      RCLCPP_INFO(
-        rclcpp::get_logger("yaml-cpp"), "Failed to load entry \"%s\" for device \"%s\" ",
-        entry_name.c_str(), device_name.c_str());
+    } catch (const std::exception &e) {
+      RCLCPP_INFO(rclcpp::get_logger("yaml-cpp"),
+                  "Failed to load entry \"%s\" for device \"%s\" ",
+                  entry_name.c_str(), device_name.c_str());
     }
 
     return std::nullopt;
@@ -77,16 +74,12 @@ public:
    * @param device_name
    * @return std::string
    */
-  std::string dump_device(std::string device_name)
-  {
+  std::string dump_device(std::string device_name) {
     std::string result;
-    try
-    {
+    try {
       auto config = devices_.at(device_name);
-      result = YAML::Dump(config);
-    }
-    catch (const std::exception & e)
-    {
+      result      = YAML::Dump(config);
+    } catch (const std::exception &e) {
       std::cerr << e.what() << '\n';
     }
     return result;
@@ -104,8 +97,8 @@ public:
    * @param devices           List with names of all devices
    * @return uint32_t         Number of devices discovered
    */
-  uint32_t get_all_devices(std::vector<std::string> & devices);
+  uint32_t get_all_devices(std::vector<std::string> &devices);
 };
-}  // namespace ros2_canopen
+} // namespace ros2_canopen
 
 #endif

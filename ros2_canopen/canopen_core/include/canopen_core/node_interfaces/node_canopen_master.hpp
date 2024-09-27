@@ -15,7 +15,8 @@
 #ifndef NODE_CANOPEN_MASTER_HPP_
 #define NODE_CANOPEN_MASTER_HPP_
 
-#include <yaml-cpp/yaml.h>
+#include "canopen_core/master_error.hpp"
+#include "canopen_core/node_interfaces/node_canopen_master_interface.hpp"
 #include <atomic>
 #include <lely/coapp/master.hpp>
 #include <lely/coapp/slave.hpp>
@@ -29,13 +30,10 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_lifecycle/lifecycle_node.hpp>
 #include <thread>
-#include "canopen_core/master_error.hpp"
-#include "canopen_core/node_interfaces/node_canopen_master_interface.hpp"
+#include <yaml-cpp/yaml.h>
 
-namespace ros2_canopen
-{
-namespace node_interfaces
-{
+namespace ros2_canopen {
+namespace node_interfaces {
 /**
  * @brief Node Canopen Master
  *
@@ -48,15 +46,15 @@ namespace node_interfaces
  * @tparam NODETYPE
  */
 template <class NODETYPE>
-class NodeCanopenMaster : public NodeCanopenMasterInterface
-{
+class NodeCanopenMaster : public NodeCanopenMasterInterface {
   static_assert(
-    std::is_base_of<rclcpp::Node, NODETYPE>::value ||
-      std::is_base_of<rclcpp_lifecycle::LifecycleNode, NODETYPE>::value,
-    "NODETYPE must derive from rclcpp::Node or rclcpp_lifecycle::LifecycleNode");
+      std::is_base_of<rclcpp::Node, NODETYPE>::value ||
+          std::is_base_of<rclcpp_lifecycle::LifecycleNode, NODETYPE>::value,
+      "NODETYPE must derive from rclcpp::Node or "
+      "rclcpp_lifecycle::LifecycleNode");
 
 protected:
-  NODETYPE * node_;
+  NODETYPE *node_;
 
   std::atomic<bool> initialised_;
   std::atomic<bool> configured_;
@@ -64,35 +62,35 @@ protected:
   std::atomic<bool> master_set_;
 
   std::shared_ptr<lely::canopen::AsyncMaster> master_;
-  std::shared_ptr<lely::ev::Executor> exec_;
+  std::shared_ptr<lely::ev::Executor>         exec_;
 
-  std::unique_ptr<lely::io::IoGuard> io_guard_;
-  std::unique_ptr<lely::io::Context> ctx_;
-  std::unique_ptr<lely::io::Poll> poll_;
-  std::unique_ptr<lely::ev::Loop> loop_;
-  std::unique_ptr<lely::io::Timer> timer_;
+  std::unique_ptr<lely::io::IoGuard>       io_guard_;
+  std::unique_ptr<lely::io::Context>       ctx_;
+  std::unique_ptr<lely::io::Poll>          poll_;
+  std::unique_ptr<lely::ev::Loop>          loop_;
+  std::unique_ptr<lely::io::Timer>         timer_;
   std::unique_ptr<lely::io::CanController> ctrl_;
-  std::unique_ptr<lely::io::CanChannel> chan_;
-  std::unique_ptr<lely::io::SignalSet> sigset_;
+  std::unique_ptr<lely::io::CanChannel>    chan_;
+  std::unique_ptr<lely::io::SignalSet>     sigset_;
 
   rclcpp::CallbackGroup::SharedPtr client_cbg_;
   rclcpp::CallbackGroup::SharedPtr timer_cbg_;
 
-  YAML::Node config_;
-  uint8_t node_id_;
+  YAML::Node                config_;
+  uint8_t                   node_id_;
   std::chrono::milliseconds non_transmit_timeout_;
-  std::string container_name_;
-  std::string master_dcf_;
-  std::string master_bin_;
-  std::string can_interface_name_;
-  uint32_t timeout_;
+  std::string               container_name_;
+  std::string               master_dcf_;
+  std::string               master_bin_;
+  std::string               can_interface_name_;
+  uint32_t                  timeout_;
 
   std::thread spinner_;
 
 public:
-  NodeCanopenMaster(NODETYPE * node)
-  : initialised_(false), configured_(false), activated_(false), master_set_(false)
-  {
+  NodeCanopenMaster(NODETYPE *node)
+      : initialised_(false), configured_(false), activated_(false),
+        master_set_(false) {
     node_ = node;
   }
 
@@ -100,19 +98,18 @@ public:
    * @brief Initialise Master
    *
    */
-  void init() override
-  {
+  void init() override {
     RCLCPP_DEBUG(node_->get_logger(), "init_start");
-    if (configured_.load())
-    {
+    if (configured_.load()) {
       throw MasterException("Init: Master is already configured.");
     }
-    if (activated_.load())
-    {
+    if (activated_.load()) {
       throw MasterException("Init: Master is already activated.");
     }
-    client_cbg_ = node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-    timer_cbg_ = node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    client_cbg_ = node_->create_callback_group(
+        rclcpp::CallbackGroupType::MutuallyExclusive);
+    timer_cbg_ = node_->create_callback_group(
+        rclcpp::CallbackGroupType::MutuallyExclusive);
 
     node_->declare_parameter("container_name", "");
     node_->declare_parameter("master_dcf", "");
@@ -134,22 +131,18 @@ public:
    * such as reading parameter data or configuration data from files.
    *
    */
-  void configure() override
-  {
-    if (!initialised_.load())
-    {
+  void configure() override {
+    if (!initialised_.load()) {
       throw MasterException("Configure: Master is not initialised.");
     }
-    if (configured_.load())
-    {
+    if (configured_.load()) {
       throw MasterException("Configure: Master is already configured.");
     }
-    if (activated_.load())
-    {
+    if (activated_.load()) {
       throw MasterException("Configure: Master is already activated.");
     }
 
-    int non_transmit_timeout;
+    int         non_transmit_timeout;
     std::string config;
 
     node_->get_parameter("container_name", container_name_);
@@ -161,93 +154,82 @@ public:
     node_->get_parameter("config", config);
 
     this->config_ = YAML::Load(config);
-    this->non_transmit_timeout_ = std::chrono::milliseconds(non_transmit_timeout);
+    this->non_transmit_timeout_ =
+        std::chrono::milliseconds(non_transmit_timeout);
 
     this->configure(true);
     this->configured_.store(true);
   }
 
-  virtual void configure(bool called_from_base)
-  {
+  virtual void configure(bool called_from_base) {
     std::optional<int> timeout;
-    try
-    {
-      timeout = this->config_["boot_timeout"].as<int>();
-    }
-    catch (...)
-    {
-      RCLCPP_WARN(
-        this->node_->get_logger(),
-        "No timeout parameter found in config file. Using default value of 100ms.");
+    try {
+      timeout = this->config_["boot_timeout"].template as<int>();
+    } catch (...) {
+      RCLCPP_WARN(this->node_->get_logger(),
+                  "No timeout parameter found in config file. Using default "
+                  "value of 100ms.");
     }
     this->timeout_ = timeout.value_or(2000);
-    RCLCPP_INFO_STREAM(
-      this->node_->get_logger(), "Master boot timeout set to " << this->timeout_ << "ms.");
+    RCLCPP_INFO_STREAM(this->node_->get_logger(), "Master boot timeout set to "
+                                                      << this->timeout_
+                                                      << "ms.");
   }
 
   /**
    * @brief Activate the driver
    *
-   * This function should activate the driver, consequently it needs to start all timers and threads
-   * necessary for the operation of the driver.
+   * This function should activate the driver, consequently it needs to start
+   * all timers and threads necessary for the operation of the driver.
    *
    */
-  void activate() override
-  {
+  void activate() override {
     RCLCPP_DEBUG(this->node_->get_logger(), "NodeCanopenMaster activate start");
-    if (!initialised_.load())
-    {
+    if (!initialised_.load()) {
       throw MasterException("Activate: master is not initialised");
     }
-    if (!configured_.load())
-    {
+    if (!configured_.load()) {
       throw MasterException("Activate: master is not configured");
     }
-    if (activated_.load())
-    {
+    if (activated_.load()) {
       throw MasterException("Activate: master is already activated");
     }
 
     io_guard_ = std::make_unique<lely::io::IoGuard>();
-    ctx_ = std::make_unique<lely::io::Context>();
-    poll_ = std::make_unique<lely::io::Poll>(*ctx_);
-    loop_ = std::make_unique<lely::ev::Loop>(poll_->get_poll());
+    ctx_      = std::make_unique<lely::io::Context>();
+    poll_     = std::make_unique<lely::io::Poll>(*ctx_);
+    loop_     = std::make_unique<lely::ev::Loop>(poll_->get_poll());
 
-    exec_ = std::make_shared<lely::ev::Executor>(loop_->get_executor());
+    exec_  = std::make_shared<lely::ev::Executor>(loop_->get_executor());
     timer_ = std::make_unique<lely::io::Timer>(*poll_, *exec_, CLOCK_MONOTONIC);
-    ctrl_ = std::make_unique<lely::io::CanController>(can_interface_name_.c_str());
+    ctrl_ =
+        std::make_unique<lely::io::CanController>(can_interface_name_.c_str());
     chan_ = std::make_unique<lely::io::CanChannel>(*poll_, *exec_);
     chan_->open(*ctrl_);
 
     this->activate(true);
-    if (!master_)
-    {
+    if (!master_) {
       throw MasterException("Activate: master not set");
     }
     this->master_set_.store(true);
     this->master_->Reset();
-    this->spinner_ = std::thread(
-      [this]()
-      {
-        try
-        {
-          loop_->run();
-        }
-        catch (const std::exception & e)
-        {
-          RCLCPP_INFO(this->node_->get_logger(), e.what());
-        }
-        RCLCPP_INFO(this->node_->get_logger(), "Canopen master loop stopped");
-      });
+    this->spinner_ = std::thread([this]() {
+      try {
+        loop_->run();
+      } catch (const std::exception &e) {
+        RCLCPP_INFO(this->node_->get_logger(), e.what());
+      }
+      RCLCPP_INFO(this->node_->get_logger(), "Canopen master loop stopped");
+    });
     this->activated_.store(true);
     RCLCPP_DEBUG(this->node_->get_logger(), "NodeCanopenMaster activate end");
   }
   /**
    * @brief Activate hook for derived classes
    *
-   * This function should create a Master using exec_, timer_, master_dcf_, master_bin_
-   * and node_id_ members and store it in master_. It should also create a thread and run
-   * the master's event loop.
+   * This function should create a Master using exec_, timer_, master_dcf_,
+   * master_bin_ and node_id_ members and store it in master_. It should also
+   * create a thread and run the master's event loop.
    *
    * @param called_from_base
    */
@@ -256,30 +238,24 @@ public:
   /**
    * @brief Deactivate the driver
    *
-   * This function should deactivate the driver, consequently it needs to stop all timers and
-   * threads that are related to the operation of the diver.
+   * This function should deactivate the driver, consequently it needs to stop
+   * all timers and threads that are related to the operation of the diver.
    *
    */
-  void deactivate() override
-  {
-    if (!initialised_.load())
-    {
+  void deactivate() override {
+    if (!initialised_.load()) {
       throw MasterException("Deactivate: master is not initialised");
     }
-    if (!configured_.load())
-    {
+    if (!configured_.load()) {
       throw MasterException("Deactivate: master is not configured");
     }
-    if (!activated_.load())
-    {
+    if (!activated_.load()) {
       throw MasterException("Deactivate: master is not activated");
     }
-    exec_->post(
-      [this]()
-      {
-        RCLCPP_INFO(node_->get_logger(), "Lely Core Context Shutdown");
-        ctx_->shutdown();
-      });
+    exec_->post([this]() {
+      RCLCPP_INFO(node_->get_logger(), "Lely Core Context Shutdown");
+      ctx_->shutdown();
+    });
     this->spinner_.join();
 
     this->deactivate(true);
@@ -303,18 +279,14 @@ public:
    * all data should be deleted.
    *
    */
-  void cleanup() override
-  {
-    if (!initialised_.load())
-    {
+  void cleanup() override {
+    if (!initialised_.load()) {
       throw MasterException("Cleanup: master is not initialised.");
     }
-    if (!configured_.load())
-    {
+    if (!configured_.load()) {
       throw MasterException("Cleanup: master is not configured");
     }
-    if (activated_.load())
-    {
+    if (activated_.load()) {
       throw MasterException("Cleanup: master is still active");
     }
     this->cleanup(true);
@@ -338,16 +310,13 @@ public:
    * This function should shutdown the driver.
    *
    */
-  void shutdown() override
-  {
+  void shutdown() override {
     RCLCPP_DEBUG(this->node_->get_logger(), "Shutting down.");
-    if (this->activated_)
-    {
+    if (this->activated_) {
       this->deactivate();
     }
 
-    if (this->configured_)
-    {
+    if (this->configured_) {
       this->cleanup();
     }
     shutdown(true);
@@ -364,10 +333,8 @@ public:
    *
    * @return std::shared_ptr<lely::canopen::AsyncMaster>
    */
-  virtual std::shared_ptr<lely::canopen::AsyncMaster> get_master()
-  {
-    if (!master_set_.load())
-    {
+  virtual std::shared_ptr<lely::canopen::AsyncMaster> get_master() {
+    if (!master_set_.load()) {
       throw MasterException("Get Master: Master is not set.");
     }
     return master_;
@@ -377,16 +344,14 @@ public:
    *
    * @return std::shared_ptr<lely::canopen::Executor>
    */
-  virtual std::shared_ptr<lely::ev::Executor> get_executor()
-  {
-    if (!master_set_.load())
-    {
+  virtual std::shared_ptr<lely::ev::Executor> get_executor() {
+    if (!master_set_.load()) {
       throw MasterException("Get Executor: master is not set");
     }
     return exec_;
   }
 };
-}  // namespace node_interfaces
-}  // namespace ros2_canopen
+} // namespace node_interfaces
+} // namespace ros2_canopen
 
 #endif
