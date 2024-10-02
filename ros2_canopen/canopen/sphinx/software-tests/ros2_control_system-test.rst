@@ -11,16 +11,16 @@ Test details
     Package; canopen_tests
     Test file; launch/canopen_system.launch.py
     Description; Create an exemplary ros2_control SystemInterface with CAN master and communicates to a slave node.
-    Prerequisites; slcan0 must be available
+    Prerequisites; slcan1 must be available
 
-To bring up slcan0:
+To bring up slcan1:
 
    .. code-block:: bash
 
       sudo modprobe vcan
-      sudo ip link add dev slcan0 type vcan
-      sudo ip link set slcan0 txqueuelen 1000
-      sudo ip link set up slcan0
+      sudo ip link add dev slcan1 type vcan
+      sudo ip link set slcan1 txqueuelen 1000
+      sudo ip link set up slcan1
 
 
 Explanation of the test

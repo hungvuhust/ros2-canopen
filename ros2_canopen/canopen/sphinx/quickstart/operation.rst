@@ -7,9 +7,9 @@ Setup CAN Controller
 .. code-block:: console
 
   $ sudo modprobe vcan
-  $ sudo ip link add dev slcan0 type vcan
-  $ sudo ip link set slcan0 txqueuelen 1000
-  $ sudo ip link set up slcan0
+  $ sudo ip link add dev slcan1 type vcan
+  $ sudo ip link set slcan1 txqueuelen 1000
+  $ sudo ip link set up slcan1
 
 **Option 2**: Peak CANController
 

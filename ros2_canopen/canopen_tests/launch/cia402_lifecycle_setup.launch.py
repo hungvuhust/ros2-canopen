@@ -68,7 +68,7 @@ def generate_launch_description():
                 "cia402_lifecycle",
                 "bus.yml",
             ),
-            "can_interface_name": "slcan0",
+            "can_interface_name": "slcan1",
         }.items(),
     )
 

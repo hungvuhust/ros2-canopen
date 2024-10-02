@@ -52,7 +52,7 @@ def generate_launch_description():
 
     can_interface_name_arg = DeclareLaunchArgument(
         "can_interface_name",
-        default_value=TextSubstitution(text="slcan0"),
+        default_value=TextSubstitution(text="slcan1"),
         description="CAN interface used by master and drivers.",
     )
 

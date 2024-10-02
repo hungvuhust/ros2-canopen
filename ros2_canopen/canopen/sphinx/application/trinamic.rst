@@ -156,7 +156,7 @@ Configuration
                         "single-pd42",
                         "bus.yml",
                     ),
-                    "can_interface_name": "slcan0",
+                    "can_interface_name": "slcan1",
                 }.items(),
             )
 

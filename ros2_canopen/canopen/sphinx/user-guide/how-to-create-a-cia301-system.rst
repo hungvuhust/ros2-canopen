@@ -27,7 +27,7 @@ To use the control system interface for CiA301 profile, we should prepare the fo
 - bus_conf
 - master_dcf
 - master_bin
-- can_interface, (default: slcan0)
+- can_interface, (default: slcan1)
 
 Define the bus configuration parameters
 

@@ -244,7 +244,7 @@ Package creation and setup
             declared_arguments.append(
                 DeclareLaunchArgument(
                     "can_interface_name",
-                    default_value="slcan0",
+                    default_value="slcan1",
                     description="Interface name for can",
                 )
             )
@@ -445,13 +445,13 @@ and create the MoveIt2 package for your robot. The MoveIt2 package should be cre
 
 Running the PRBT robot
 ------------------------
-There are two ways to run the demo. First you can use ``canopen_fake_slave`` to simulate the robot using CAN interface ``slcan0``. Second you can use the real robot.
+There are two ways to run the demo. First you can use ``canopen_fake_slave`` to simulate the robot using CAN interface ``slcan1``. Second you can use the real robot.
 Refer :doc:`../quickstart/operation` to configure CAN interface.
 
 .. code-block:: bash
 
     # Run the demo using fake robot
-    ros2 launch prbt_robot_moveit_config moveit_planning_execution.launch.py can_interface_name:=slcan0
+    ros2 launch prbt_robot_moveit_config moveit_planning_execution.launch.py can_interface_name:=slcan1
 
     # Run the demo using real robot
     ros2 launch prbt_robot_moveit_config moveit_planning_execution.launch.py can_interface_name:=can0
